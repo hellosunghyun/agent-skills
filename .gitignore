@@ -1,0 +1,37 @@
+# Sisyphus/OMC state
+.sisyphus/
+
+# OS files
+*.DS_Store
+.DS_Store
+Thumbs.db
+
+# Node modules
+node_modules/
+npm-debug.log
+yarn-error.log
+
+# Editor/IDE
+*.swp
+*.swo
+*~
+.vscode/
+.idea/
+*.sublime-project
+*.sublime-workspace
+
+# Environment
+.env
+.env.local
+.env.*.local
+
+# Build artifacts
+dist/
+build/
+*.o
+*.a
+*.so
+
+# Logs
+*.log
+logs/
