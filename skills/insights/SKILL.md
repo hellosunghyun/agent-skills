@@ -249,6 +249,7 @@ echo "$STATS_JSON" > "$STATS_FILE"
 REPORT_PATH=$(echo "$INSIGHTS_JSON" | ./scripts/generate-report.sh \
   --stats "$STATS_FILE" \
   --cli "$CLI_TYPE" \
+  --language "${LANGUAGE:-en}" \
   --output ~/.agent-insights/reports/report-$(date +%Y-%m-%d).html)
 
 echo "Report generated: $REPORT_PATH"
@@ -439,6 +440,27 @@ REPORT=$(echo "$INSIGHTS" | ./scripts/generate-report.sh \
 - **Parallelization:** Run the 8 analysis prompts in parallel for faster execution.
 - **Privacy:** All data stays local. No external API calls. Report is self-contained HTML.
 - **Extensibility:** To add a new CLI, create an adapter in `collect-sessions.sh` following the existing pattern.
+
+## Language Support
+
+The insights skill supports multi-language report generation.
+
+### Supported Languages
+- **Built-in**: English (`en`), Korean (`ko`)
+- **Dynamic**: Any language via AI translation
+
+### How to Specify Language
+1. **CLI flag**: `--language <code>` (e.g., `--language ko`)
+2. **Environment variable**: `LANG` or `LC_ALL` (e.g., `LANG=ko_KR.UTF-8`)
+3. **Default**: English (`en`)
+
+### What Gets Translated
+- **HTML report UI strings**: Section titles, labels (26 strings)
+- **Analysis content**: Insights JSON values (via prompt instruction)
+
+### What Stays in English
+- **JSON keys**: Always English for consistency
+- **Shell script output**: Help messages, errors
 
 ## Version
 
