@@ -1,0 +1,17 @@
+{
+  "id": "session-oc-002",
+  "slug": "debug-performance",
+  "projectID": "proj1",
+  "directory": "/Users/user/opencode-project",
+  "title": "Debug performance issues",
+  "version": "1.2.0",
+  "time": {
+    "created": 1738486800000,
+    "updated": 1738487200000
+  },
+  "summary": {
+    "additions": 25,
+    "deletions": 15,
+    "files": 3
+  }
+}

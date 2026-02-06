@@ -1,0 +1,17 @@
+{
+  "id": "session-oc-short",
+  "slug": "quick-check",
+  "projectID": "proj1",
+  "directory": "/Users/user/opencode-project",
+  "title": "Quick check",
+  "version": "1.2.0",
+  "time": {
+    "created": 1738410000000,
+    "updated": 1738410030000
+  },
+  "summary": {
+    "additions": 0,
+    "deletions": 0,
+    "files": 0
+  }
+}

@@ -1,0 +1,12 @@
+{
+  "id": "msg-oc-s02-02",
+  "sessionID": "session-oc-002",
+  "role": "assistant",
+  "content": "I'll analyze the performance bottlenecks",
+  "timestamp": 1738486810000,
+  "model": "claude-sonnet-4-20250514",
+  "tokens": {
+    "input": 0,
+    "output": 120
+  }
+}

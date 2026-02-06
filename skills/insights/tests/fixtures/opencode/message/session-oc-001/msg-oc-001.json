@@ -1,0 +1,12 @@
+{
+  "id": "msg-oc-001",
+  "sessionID": "session-oc-001",
+  "role": "user",
+  "content": "Help me build a new feature",
+  "timestamp": 1738400400000,
+  "model": "claude-sonnet-4-20250514",
+  "tokens": {
+    "input": 100,
+    "output": 0
+  }
+}

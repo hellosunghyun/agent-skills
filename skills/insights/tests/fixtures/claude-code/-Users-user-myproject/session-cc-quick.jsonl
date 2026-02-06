@@ -1,0 +1,2 @@
+{"type":"user","message":{"role":"user","content":"What version?"},"uuid":"msg-q01","timestamp":"2026-02-01T14:00:00.000Z","sessionId":"session-cc-quick","version":"2.3.0","cwd":"/Users/user/myproject","gitBranch":"main"}
+{"type":"assistant","message":{"role":"assistant","content":"Version 2.3.0"},"uuid":"msg-q02","timestamp":"2026-02-01T14:00:30.000Z","sessionId":"session-cc-quick","version":"2.3.0","cwd":"/Users/user/myproject","gitBranch":"main"}

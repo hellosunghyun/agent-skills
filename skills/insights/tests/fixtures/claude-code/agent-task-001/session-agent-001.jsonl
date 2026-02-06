@@ -1,0 +1,4 @@
+{"type":"user","message":{"role":"user","content":"Agent task"},"uuid":"msg-a01","timestamp":"2026-02-01T11:00:00.000Z","sessionId":"session-agent-001","version":"2.3.0","cwd":"/Users/user/myproject","gitBranch":"main"}
+{"type":"assistant","message":{"role":"assistant","content":"Done"},"uuid":"msg-a02","timestamp":"2026-02-01T11:05:00.000Z","sessionId":"session-agent-001","version":"2.3.0","cwd":"/Users/user/myproject","gitBranch":"main"}
+{"type":"user","message":{"role":"user","content":"More agent work"},"uuid":"msg-a03","timestamp":"2026-02-01T11:10:00.000Z","sessionId":"session-agent-001","version":"2.3.0","cwd":"/Users/user/myproject","gitBranch":"main"}
+{"type":"assistant","message":{"role":"assistant","content":"Agent complete"},"uuid":"msg-a04","timestamp":"2026-02-01T11:15:00.000Z","sessionId":"session-agent-001","version":"2.3.0","cwd":"/Users/user/myproject","gitBranch":"main"}

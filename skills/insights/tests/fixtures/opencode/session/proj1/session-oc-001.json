@@ -1,0 +1,17 @@
+{
+  "id": "session-oc-001",
+  "slug": "build-feature",
+  "projectID": "proj1",
+  "directory": "/Users/user/opencode-project",
+  "title": "Build new feature",
+  "version": "1.2.0",
+  "time": {
+    "created": 1738400400000,
+    "updated": 1738402200000
+  },
+  "summary": {
+    "additions": 150,
+    "deletions": 20,
+    "files": 5
+  }
+}

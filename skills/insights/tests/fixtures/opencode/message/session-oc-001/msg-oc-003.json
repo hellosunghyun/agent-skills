@@ -1,0 +1,12 @@
+{
+  "id": "msg-oc-003",
+  "sessionID": "session-oc-001",
+  "role": "user",
+  "content": "Add tests too please",
+  "timestamp": 1738401000000,
+  "model": "claude-sonnet-4-20250514",
+  "tokens": {
+    "input": 80,
+    "output": 0
+  }
+}

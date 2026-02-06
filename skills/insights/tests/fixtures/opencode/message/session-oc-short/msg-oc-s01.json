@@ -1,0 +1,12 @@
+{
+  "id": "msg-oc-s01",
+  "sessionID": "session-oc-short",
+  "role": "user",
+  "content": "Hi",
+  "timestamp": 1738410000000,
+  "model": "claude-sonnet-4-20250514",
+  "tokens": {
+    "input": 10,
+    "output": 0
+  }
+}

@@ -1,0 +1,12 @@
+{
+  "id": "msg-oc-004",
+  "sessionID": "session-oc-001",
+  "role": "assistant",
+  "content": "Tests added and passing.",
+  "timestamp": 1738402200000,
+  "model": "claude-sonnet-4-20250514",
+  "tokens": {
+    "input": 600,
+    "output": 300
+  }
+}

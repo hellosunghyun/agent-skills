@@ -1,0 +1,2 @@
+{"timestamp":"2026-02-02T14:00:00.000Z","type":"session_meta","payload":{"session_id":"rollout-002","project_path":"/Users/user/codex-project","git_branch":"main","model":"o3-mini"}}
+{"timestamp":"2026-02-02T14:00:15.000Z","type":"response_item","payload":{"session_id":"rollout-002","messages":[{"role":"user","content":"Quick question"}],"tools_used":[],"tokens":{"input":50,"output":30}}}

@@ -1,0 +1,12 @@
+{
+  "id": "msg-oc-002",
+  "sessionID": "session-oc-001",
+  "role": "assistant",
+  "content": "I'll help you build that feature. Let me start by examining the codebase.",
+  "timestamp": 1738400460000,
+  "model": "claude-sonnet-4-20250514",
+  "tokens": {
+    "input": 500,
+    "output": 200
+  }
+}
