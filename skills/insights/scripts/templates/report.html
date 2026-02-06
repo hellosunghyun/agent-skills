@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="{{LANGUAGE_CODE}}">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -226,6 +226,7 @@
     <!-- Data Injection -->
     <script type="application/json" id="stats-data">{{STATS_JSON}}</script>
     <script type="application/json" id="insights-data">{{INSIGHTS_JSON}}</script>
+    <script type="application/json" id="locale-data">{{LOCALE_JSON}}</script>
 
     <script>
         // --- Utilities ---
@@ -237,6 +238,22 @@
                 .replace(/"/g, "&quot;")
                 .replace(/'/g, "&#039;");
         };
+
+        // i18n translation function
+        let locale = {};
+        try {
+            const localeEl = document.getElementById('locale-data');
+            if (localeEl && localeEl.textContent) {
+                const localeRaw = localeEl.textContent.trim();
+                if (localeRaw && !localeRaw.includes('{{LOCALE_JSON}}')) {
+                    locale = JSON.parse(localeRaw);
+                }
+            }
+        } catch (e) {
+            console.warn('Failed to load locale data:', e);
+        }
+
+        const t = (key, fallback) => locale[key] || fallback || key;
 
         const parseMarkdown = (text) => {
             if (!text) return '';
@@ -267,13 +284,13 @@
         function renderStats(stats) {
             if (!stats) return;
             const summary = [];
-            if (stats.total_sessions) summary.push(`<strong>${stats.total_sessions}</strong> Sessions`);
-            if (stats.total_messages) summary.push(`<strong>${stats.total_messages}</strong> Messages`);
+            if (stats.total_sessions) summary.push(`<strong>${stats.total_sessions}</strong> ${t('sessions', 'Sessions')}`);
+            if (stats.total_messages) summary.push(`<strong>${stats.total_messages}</strong> ${t('messages', 'Messages')}`);
             if (stats.total_duration_minutes) {
                 const hours = Math.round(stats.total_duration_minutes / 60);
-                summary.push(`<strong>${hours}</strong> Hours`);
+                summary.push(`<strong>${hours}</strong> ${t('hours', 'Hours')}`);
             }
-            if (stats.date_range) summary.push(`${stats.date_range.start} to ${stats.date_range.end}`);
+            if (stats.date_range) summary.push(`${stats.date_range.start} ${t('date_separator', 'to')} ${stats.date_range.end}`);
             
             $('stats-summary').innerHTML = summary.join(' &nbsp;|&nbsp; ');
         }
@@ -281,10 +298,10 @@
         function renderAtAGlance(data) {
             if (!data) return '';
             const items = [
-                { label: "What's Working", value: data.whats_working },
-                { label: "What's Hindering", value: data.whats_hindering },
-                { label: "Quick Wins", value: data.quick_wins },
-                { label: "Ambitious Goal", value: data.ambitious_workflows }
+                { label: t('whats_working_label', "What's Working"), value: data.whats_working },
+                { label: t('whats_hindering_label', "What's Hindering"), value: data.whats_hindering },
+                { label: t('quick_wins_label', 'Quick Wins'), value: data.quick_wins },
+                { label: t('ambitious_goal_label', 'Ambitious Goal'), value: data.ambitious_workflows }
             ];
 
             const gridItems = items.map(item => `
@@ -294,7 +311,7 @@
                 </div>
             `).join('');
 
-            return renderSection("At a Glance", `<div class="at-a-glance-grid">${gridItems}</div>`);
+            return renderSection(t('section_at_a_glance', 'At a Glance'), `<div class="at-a-glance-grid">${gridItems}</div>`);
         }
 
         function renderProjectAreas(data) {
@@ -310,16 +327,16 @@
                 </div>
             `).join('');
 
-            return renderSection("What You Work On", list);
+            return renderSection(t('section_project_areas', 'What You Work On'), list);
         }
 
         function renderStyle(data) {
             if (!data) return '';
             let content = '';
             if (data.narrative) content += `<p>${parseMarkdown(data.narrative)}</p>`;
-            if (data.key_pattern) content += `<p style="margin-top: 1rem; font-style: italic; color: var(--text-secondary);">Key Pattern: ${parseMarkdown(data.key_pattern)}</p>`;
+            if (data.key_pattern) content += `<p style="margin-top: 1rem; font-style: italic; color: var(--text-secondary);">${t('key_pattern_label', 'Key Pattern:')} ${parseMarkdown(data.key_pattern)}</p>`;
             
-            return renderSection("Your Style", content);
+            return renderSection(t('section_style', 'Your Style'), content);
         }
 
         function renderWhatWorks(data) {
@@ -332,7 +349,7 @@
                 </div>
             `).join('');
 
-            return renderSection("What's Working Well", list);
+            return renderSection(t('section_what_works', "What's Working Well"), list);
         }
 
         function renderFriction(data) {
@@ -351,7 +368,7 @@
                 `;
             }).join('');
 
-            return renderSection("Friction Points", list);
+            return renderSection(t('section_friction', 'Friction Points'), list);
         }
 
         function renderSuggestions(data) {
@@ -359,13 +376,13 @@
             
             let html = '';
             if (data.features && data.features.length) {
-                html += `<h4>Features to Try</h4><ul class="list-disc" style="margin-bottom: 1.5rem;">${data.features.map(f => `<li>${parseMarkdown(f)}</li>`).join('')}</ul>`;
+                html += `<h4>${t('features_to_try', 'Features to Try')}</h4><ul class="list-disc" style="margin-bottom: 1.5rem;">${data.features.map(f => `<li>${parseMarkdown(f)}</li>`).join('')}</ul>`;
             }
             if (data.usage_patterns && data.usage_patterns.length) {
-                html += `<h4>Pattern Shifts</h4><ul class="list-disc">${data.usage_patterns.map(p => `<li>${parseMarkdown(p)}</li>`).join('')}</ul>`;
+                html += `<h4>${t('pattern_shifts', 'Pattern Shifts')}</h4><ul class="list-disc">${data.usage_patterns.map(p => `<li>${parseMarkdown(p)}</li>`).join('')}</ul>`;
             }
 
-            return renderSection("Suggestions", html);
+            return renderSection(t('section_suggestions', 'Suggestions'), html);
         }
 
         function renderHorizon(data) {
@@ -379,7 +396,7 @@
                 </div>
             `).join('');
 
-            return renderSection("On the Horizon", list);
+            return renderSection(t('section_horizon', 'On the Horizon'), list);
         }
 
         function renderFunMoment(data) {
@@ -389,7 +406,7 @@
                     <div class="card fun-moment">
                         <div style="text-align: center;">
                             <div style="font-size: 2rem; margin-bottom: 0.5rem;">✨</div>
-                            <h3 style="margin: 0; color: var(--accent-color);">${escapeHtml(data.headline || 'Moment of Zen')}</h3>
+                            <h3 style="margin: 0; color: var(--accent-color);">${escapeHtml(data.headline || t('moment_of_zen', 'Moment of Zen'))}</h3>
                             <p style="margin-top: 0.5rem;">${parseMarkdown(data.detail)}</p>
                         </div>
                     </div>
@@ -401,6 +418,12 @@
         
         document.addEventListener('DOMContentLoaded', () => {
             try {
+                // Update UI with localized text
+                document.querySelector('h1').textContent = t('title', 'Insights Report');
+                document.title = t('title', 'Insights Report');
+                const footerP = document.querySelector('footer p');
+                if (footerP) footerP.textContent = t('footer', 'Generated by Insights');
+
                 // Get Raw Data
                 const statsRaw = $('stats-data').textContent.trim();
                 const insightsRaw = $('insights-data').textContent.trim();
@@ -429,12 +452,12 @@
                     renderFunMoment(insights.fun_ending)
                 ];
 
-                $('report-content').innerHTML = htmlParts.join('') || '<div style="text-align:center; color: var(--text-secondary);">No insights data available to display.</div>';
+                $('report-content').innerHTML = htmlParts.join('') || `<div style="text-align:center; color: var(--text-secondary);">${t('no_data', 'No insights data available to display.')}</div>`;
 
             } catch (e) {
                 console.error("Rendering failed", e);
                 $('report-content').innerHTML = `<div style="color: red; text-align: center; padding: 2rem;">
-                    <h3>Error Generating Report</h3>
+                    <h3>${t('error_title', 'Error Generating Report')}</h3>
                     <p>${e.message}</p>
                 </div>`;
             }
