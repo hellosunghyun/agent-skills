@@ -1,5 +1,6 @@
-# Sisyphus/OMC state
+# Agent state
 .sisyphus/
+.agents/
 
 # OS files
 *.DS_Store
