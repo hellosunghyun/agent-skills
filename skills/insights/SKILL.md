@@ -1,10 +1,34 @@
 ---
 name: insights
-description: Generate an HTML report analyzing your AI coding assistant sessions. Auto-detects CLI (Claude Code, OpenCode, Codex), collects session data, and provides insights on your workflow patterns.
+description: Analyzes AI coding assistant sessions and generates an HTML report with workflow insights. Use this skill when the user asks to analyze sessions, generate a report, view usage patterns, check statistics, or review their coding workflow. Trigger phrases include "analyze my sessions", "generate a report", "show my stats", "how have I been using you", "session insights", "세션 분석", "리포트 생성", "사용 패턴".
 compatibility: Requires bash 4+, jq. Supports Claude Code 2.1+, OpenCode 1.1+, Codex. macOS and Linux.
 ---
 
 # Insights Skill
+
+## When to Use This Skill
+
+**IMPORTANT: You MUST activate this skill** when you detect ANY of the following signals from the user. Do NOT ask for confirmation — just start executing the orchestration steps below.
+
+### Trigger Phrases (any language)
+
+Use this skill when the user:
+
+- Asks to **analyze sessions**: "analyze my sessions", "세션 분석해줘", "look at my sessions"
+- Asks for a **report**: "generate a report", "리포트 만들어줘", "give me a report"
+- Asks about **usage patterns**: "how have I been using you?", "사용 패턴 보여줘", "what are my patterns?"
+- Asks about **statistics**: "show my stats", "통계 보여줘", "how many sessions?"
+- Mentions **workflow insights**: "insights on my workflow", "워크플로우 분석", "what's working well?"
+- Asks about **productivity**: "am I productive?", "내 생산성은?", "how efficient am I?"
+- Uses **keywords**: "insights", "인사이트", "analytics", "분석", "report", "리포트", "stats", "통계", "sessions", "세션"
+- Asks vaguely about **history**: "what have we been doing?", "그동안 뭐했지?", "show me my history"
+
+### What NOT to Trigger On
+
+Do NOT use this skill when the user:
+- Asks about a specific coding task (not session analysis)
+- Wants to read a single session's content (use session tools directly)
+- Asks about this skill's code itself (just read the files)
 
 ## Overview
 
@@ -34,16 +58,6 @@ The **insights** skill generates a comprehensive HTML report analyzing your AI c
 ```
 
 If dependencies are missing, the script provides install instructions.
-
-## Usage
-
-Invoke this skill when the user asks for insights, analytics, or a report on their coding sessions.
-
-**Trigger phrases:**
-- "Show me insights on my sessions"
-- "Generate a report on my coding patterns"
-- "Analyze my workflow"
-- "What are my usage patterns?"
 
 ## Orchestration Steps
 
