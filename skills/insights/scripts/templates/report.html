@@ -232,7 +232,7 @@
         // --- Utilities ---
         const $ = (id) => document.getElementById(id);
         const escapeHtml = (unsafe) => {
-            return (unsafe || '').replace(/&/g, "&amp;")
+            return String(unsafe || '').replace(/&/g, "&amp;")
                 .replace(/</g, "&lt;")
                 .replace(/>/g, "&gt;")
                 .replace(/"/g, "&quot;")
@@ -245,7 +245,7 @@
             const localeEl = document.getElementById('locale-data');
             if (localeEl && localeEl.textContent) {
                 const localeRaw = localeEl.textContent.trim();
-                if (localeRaw && !localeRaw.includes('{{LOCALE_JSON}}')) {
+                if (localeRaw && !localeRaw.includes('{{LOCALE_JSON')) {
                     locale = JSON.parse(localeRaw);
                 }
             }
@@ -357,12 +357,15 @@
             
             const list = data.categories.map(cat => {
                 const examples = (cat.examples || []).map(ex => 
-                    `<li class="text-sm text-secondary">${escapeHtml(ex.issue)} <span style="opacity: 0.7;">(${escapeHtml(ex.impact)})</span></li>`
+                    typeof ex === 'string' 
+                        ? `<li class="text-sm text-secondary">${parseMarkdown(ex)}</li>`
+                        : `<li class="text-sm text-secondary">${escapeHtml(ex.issue || '')} <span style="opacity: 0.7;">(${escapeHtml(ex.impact || '')})</span></li>`
                 ).join('');
                 
                 return `
                     <div style="margin-bottom: 1.5rem;">
-                        <h4 style="color: var(--warning-color); font-size: 1rem;">${escapeHtml(cat.name)}</h4>
+                        <h4 style="color: var(--warning-color); font-size: 1rem;">${escapeHtml(cat.category || cat.name)}</h4>
+                        <p class="text-sm text-secondary">${parseMarkdown(cat.description || '')}</p>
                         <ul class="list-disc">${examples}</ul>
                     </div>
                 `;
@@ -375,11 +378,17 @@
             if (!data) return '';
             
             let html = '';
-            if (data.features && data.features.length) {
-                html += `<h4>${t('features_to_try', 'Features to Try')}</h4><ul class="list-disc" style="margin-bottom: 1.5rem;">${data.features.map(f => `<li>${parseMarkdown(f)}</li>`).join('')}</ul>`;
+            const items = data.claude_md_additions || [];
+            if (items.length) {
+                html += `<h4>CLAUDE.md / AGENTS.md</h4><ul class="list-disc" style="margin-bottom: 1.5rem;">${items.map(i => `<li><strong>${escapeHtml(i.title)}</strong>: ${parseMarkdown(i.why || i.content)}</li>`).join('')}</ul>`;
             }
-            if (data.usage_patterns && data.usage_patterns.length) {
-                html += `<h4>${t('pattern_shifts', 'Pattern Shifts')}</h4><ul class="list-disc">${data.usage_patterns.map(p => `<li>${parseMarkdown(p)}</li>`).join('')}</ul>`;
+            const features = data.features_to_try || data.features || [];
+            if (features.length) {
+                html += `<h4>${t('features_to_try', 'Features to Try')}</h4><ul class="list-disc" style="margin-bottom: 1.5rem;">${features.map(f => typeof f === 'string' ? `<li>${parseMarkdown(f)}</li>` : `<li><strong>${escapeHtml(f.feature)}</strong>: ${parseMarkdown(f.description)}${f.how_to_use ? `<br><span class="text-sm text-secondary">${parseMarkdown(f.how_to_use)}</span>` : ''}</li>`).join('')}</ul>`;
+            }
+            const patterns = data.usage_patterns || [];
+            if (patterns.length) {
+                html += `<h4>${t('pattern_shifts', 'Pattern Shifts')}</h4><ul class="list-disc">${patterns.map(p => typeof p === 'string' ? `<li>${parseMarkdown(p)}</li>` : `<li><strong>${escapeHtml(p.pattern)}</strong>: ${parseMarkdown(p.description)}${p.example ? `<br><span class="text-sm text-secondary">${parseMarkdown(p.example)}</span>` : ''}</li>`).join('')}</ul>`;
             }
 
             return renderSection(t('section_suggestions', 'Suggestions'), html);
@@ -391,7 +400,8 @@
             const list = data.opportunities.map(opp => `
                 <div style="margin-bottom: 2rem;">
                     <h3 style="margin-top: 0;">${escapeHtml(opp.title)}</h3>
-                    <p>${parseMarkdown(opp.description)}</p>
+                    <p>${parseMarkdown(opp.whats_possible || opp.description || '')}</p>
+                    ${opp.how_to_try ? `<p class="text-sm text-secondary">${parseMarkdown(opp.how_to_try)}</p>` : ''}
                     ${opp.copyable_prompt ? `<div class="prompt-box">${escapeHtml(opp.copyable_prompt)}</div>` : ''}
                 </div>
             `).join('');

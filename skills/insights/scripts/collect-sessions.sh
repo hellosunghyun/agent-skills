@@ -196,141 +196,88 @@ collect_claude_code() {
 collect_opencode() {
   local session_dir="${1:-${HOME}/.local/share/opencode/storage}"
   local limit="${2:-50}"
-  local sessions_json="[]"
+  local session_base="${session_dir}/session"
+  local message_base="${session_dir}/message"
 
-  # Find all session JSON files
+  local process_limit=$((limit * 3))
   local session_files=()
-  while IFS= read -r -d '' f; do
-    session_files+=("$f")
-  done < <(find "${session_dir}/session" -name '*.json' -type f -print0 2>/dev/null || true)
+  while IFS= read -r f; do
+    [[ -n "$f" ]] && session_files+=("$f")
+  done < <(find "$session_base" -name '*.json' -type f -exec stat -f '%m %N' {} + 2>/dev/null | \
+    sort -rn | head -n "$process_limit" | sed 's/^[^ ]* //')
 
   if [[ ${#session_files[@]} -eq 0 ]]; then
     echo "[]"
     return 0
   fi
 
+  local tmpfile
+  tmpfile=$(mktemp)
+  local first=true
+  local collected=0
+
+  echo "[" > "$tmpfile"
+
   for session_file in "${session_files[@]}"; do
-    local session_data
-    session_data=$(jq '.' "$session_file" 2>/dev/null) || continue
+    local meta
+    meta=$(jq -r '[.id // "", .directory // ""] | @tsv' "$session_file" 2>/dev/null) || continue
+    local session_id="${meta%%	*}"
+    local directory="${meta#*	}"
 
-    local session_id directory
-    session_id=$(echo "$session_data" | jq -r '.id // empty') || continue
-    directory=$(echo "$session_data" | jq -r '.directory // null')
+    [[ -z "$session_id" ]] && continue
 
-    if [[ -z "$session_id" ]]; then
-      continue
-    fi
+    local msg_dir="${message_base}/${session_id}"
+    [[ ! -d "$msg_dir" ]] && continue
 
-    # Read messages for this session
-    local message_dir="${session_dir}/message/${session_id}"
-    if [[ ! -d "$message_dir" ]]; then
-      continue
-    fi
-
-    local msg_files=()
-    while IFS= read -r -d '' mf; do
-      msg_files+=("$mf")
-    done < <(find "$message_dir" -name '*.json' -type f -print0 2>/dev/null || true)
-
-    local msg_count=${#msg_files[@]}
-
-    # Filter: skip sessions with <2 messages
-    if [[ "$msg_count" -lt 2 ]]; then
-      continue
-    fi
-
-    # Parse all messages, aggregate metadata
-    local user_count=0 assistant_count=0 input_tokens=0 output_tokens=0
-    local model="null"
-    local min_ts=999999999999999 max_ts=0
-
-    for mf in "${msg_files[@]}"; do
-      local msg
-      msg=$(jq '.' "$mf" 2>/dev/null) || continue
-
-      local role ts in_tok out_tok msg_model
-      role=$(echo "$msg" | jq -r '.role // empty')
-      ts=$(echo "$msg" | jq -r '.timestamp // 0')
-      in_tok=$(echo "$msg" | jq -r '.tokens.input // 0')
-      out_tok=$(echo "$msg" | jq -r '.tokens.output // 0')
-      msg_model=$(echo "$msg" | jq -r '.model // empty')
-
-      case "$role" in
-        user) user_count=$((user_count + 1)) ;;
-        assistant) assistant_count=$((assistant_count + 1)) ;;
-      esac
-
-      input_tokens=$((input_tokens + in_tok))
-      output_tokens=$((output_tokens + out_tok))
-
-      if [[ -n "$msg_model" && "$msg_model" != "null" ]]; then
-        model="$msg_model"
-      fi
-
-      if [[ "$ts" -lt "$min_ts" ]]; then
-        min_ts="$ts"
-      fi
-      if [[ "$ts" -gt "$max_ts" ]]; then
-        max_ts="$ts"
-      fi
-    done
-
-    local total_messages=$((user_count + assistant_count))
-
-    # Calculate duration from timestamps (milliseconds)
-    local duration_ms=$((max_ts - min_ts))
-    local duration_secs=$((duration_ms / 1000))
-    local duration_minutes=$((duration_secs / 60))
-
-    # Filter: skip sessions with <1 minute duration
-    if [[ "$duration_secs" -lt 60 ]]; then
-      continue
-    fi
-
-    # Convert epoch ms to ISO-8601
-    local start_time end_time
-    start_time=$(epoch_ms_to_iso "$min_ts")
-    end_time=$(epoch_ms_to_iso "$max_ts")
-
-    # Build session JSON
+    # Batch all message files into a single jq -s call (avoids N×6 jq spawns per session)
     local session_obj
-    session_obj=$(jq -n \
-      --arg sid "$session_id" \
-      --arg st "$start_time" \
-      --arg et "$end_time" \
-      --argjson dm "$duration_minutes" \
-      --argjson uc "$user_count" \
-      --argjson ac "$assistant_count" \
-      --argjson tm "$total_messages" \
-      --argjson tu '[]' \
-      --arg pp "$directory" \
-      --arg gb "null" \
-      --argjson it "$input_tokens" \
-      --argjson ot "$output_tokens" \
-      --arg md "$model" \
-      '{
-        session_id: $sid,
-        start_time: $st,
-        end_time: $et,
-        duration_minutes: $dm,
-        user_message_count: $uc,
-        assistant_message_count: $ac,
-        total_messages: $tm,
-        tools_used: $tu,
-        project_path: (if $pp == "null" then null else $pp end),
-        git_branch: null,
-        input_tokens: $it,
-        output_tokens: $ot,
-        model: (if $md == "null" then null else $md end)
-      }')
+    session_obj=$(find "$msg_dir" -name '*.json' -type f -exec cat {} + 2>/dev/null | \
+      jq -s --arg sid "$session_id" --arg dir "$directory" '
+        if length < 2 then empty
+        else
+          ([.[] | select(.role == "user")] | length) as $uc |
+          ([.[] | select(.role == "assistant")] | length) as $ac |
+          ([.[] | .timestamp // .time.created // 0] | min) as $min_ts |
+          ([.[] | .timestamp // .time.created // 0] | max) as $max_ts |
+          (($max_ts - $min_ts) / 1000) as $dur_secs |
+          if $dur_secs < 60 then empty
+          else
+            {
+              session_id: $sid,
+              start_time: (($min_ts / 1000 | floor) | todate),
+              end_time: (($max_ts / 1000 | floor) | todate),
+              duration_minutes: (($dur_secs / 60) | floor),
+              user_message_count: $uc,
+              assistant_message_count: $ac,
+              total_messages: ($uc + $ac),
+              tools_used: [],
+              project_path: (if $dir == "" then null else $dir end),
+              git_branch: null,
+              input_tokens: ([.[] | .tokens.input // 0] | add // 0),
+              output_tokens: ([.[] | .tokens.output // 0] | add // 0),
+              model: ([.[] | (.model | if type == "object" then .modelID else . end) // empty] | last // null)
+            }
+          end
+        end
+      ' 2>/dev/null) || continue
 
-    sessions_json=$(echo "$sessions_json" | jq --argjson obj "$session_obj" '. + [$obj]')
+    [[ -z "$session_obj" || "$session_obj" == "null" ]] && continue
+
+    if [[ "$first" == true ]]; then
+      first=false
+    else
+      echo "," >> "$tmpfile"
+    fi
+    echo "$session_obj" >> "$tmpfile"
+
+    collected=$((collected + 1))
+    [[ "$collected" -ge "$limit" ]] && break
   done
 
-  # Sort by start_time descending and apply limit
-  echo "$sessions_json" | jq --argjson limit "$limit" '
-    sort_by(.start_time) | reverse | .[:$limit]
-  '
+  echo "]" >> "$tmpfile"
+
+  jq 'sort_by(.start_time) | reverse' "$tmpfile"
+  rm -f "$tmpfile"
 }
 
 # --- Codex Adapter ---

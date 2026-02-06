@@ -109,39 +109,51 @@ main() {
 
   # Load locale JSON
   local locale_file="${SCRIPT_DIR}/locales/${language}.json"
-  local locale_json
+  local locale_file_resolved
   local language_code
   if [[ -f "$locale_file" ]]; then
-    locale_json=$(cat "$locale_file")
+    locale_file_resolved="$locale_file"
     language_code="$language"
   else
     echo "Warning: Locale file not found for language '$language', falling back to English" >&2
-    locale_json=$(cat "${SCRIPT_DIR}/locales/en.json")
+    locale_file_resolved="${SCRIPT_DIR}/locales/en.json"
     language_code="en"
   fi
 
+  local insights_file
+  insights_file=$(mktemp)
+  echo "$insights_json" > "$insights_file"
+
   python3 -c "
-import sys
-import re
+import sys, json
 
 template = open('$TEMPLATE_PATH', 'r').read()
-stats = '''$stats_json'''
-insights = '''$insights_json'''
-date = '$generated_date'
-cli = '$cli_type'
-locale = '''$locale_json'''
-lang = '$language_code'
+stats = open('$stats_file', 'r').read().strip()
+insights = open('$insights_file', 'r').read().strip()
+locale = open('$locale_file_resolved', 'r').read().strip()
+
+# Re-serialize to ensure valid single-line JSON (no raw newlines inside strings)
+try:
+    insights = json.dumps(json.loads(insights), ensure_ascii=False)
+except:
+    pass
+try:
+    stats = json.dumps(json.loads(stats), ensure_ascii=False)
+except:
+    pass
 
 output = template.replace('{{STATS_JSON}}', stats)
 output = output.replace('{{INSIGHTS_JSON}}', insights)
-output = output.replace('{{GENERATED_DATE}}', date)
-output = output.replace('{{CLI_TYPE}}', cli)
+output = output.replace('{{GENERATED_DATE}}', '$generated_date')
+output = output.replace('{{CLI_TYPE}}', '$cli_type')
 output = output.replace('{{LOCALE_JSON}}', locale)
-output = output.replace('{{LANGUAGE_CODE}}', lang)
+output = output.replace('{{LANGUAGE_CODE}}', '$language_code')
 
 with open('$output_file', 'w') as f:
     f.write(output)
 "
+
+  rm -f "$insights_file"
 
   echo "$output_file"
 }
