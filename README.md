@@ -11,13 +11,13 @@ Agent skills are modular, self-contained tools that AI assistants can invoke to 
 Install skills from this collection using the agent skills CLI:
 
 ```bash
-npx skills add <github-user>/agent-skills
+npx skills add hellosunghyun/agent-skills
 ```
 
 Or install a specific skill:
 
 ```bash
-npx skills add <github-user>/agent-skills/insights
+npx skills add hellosunghyun/agent-skills/insights
 ```
 
 ## Available Skills
