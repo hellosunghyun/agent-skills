@@ -22,7 +22,7 @@ OPTIONS:
   --cli <type>          CLI type: claude-code, opencode, codex
                          (auto-detects if not specified)
   --session-dir <path>  Override default session directory
-  --limit <N>           Maximum sessions to return (default: 50)
+  --limit <N>           Maximum sessions to return (default: unlimited)
   --days <N>            Only include sessions from the last N days (default: 30)
   -h, --help            Show this help message
 
@@ -98,7 +98,7 @@ epoch_ms_to_iso() {
 
 collect_claude_code() {
   local session_dir="${1:-${HOME}/.claude/projects}"
-  local limit="${2:-50}"
+  local limit="${2:-0}"
   local days="${3:-30}"
   local sessions_json="[]"
   local cutoff_date
@@ -218,7 +218,7 @@ collect_claude_code() {
 
   # Sort by start_time descending and apply limit
   echo "$sessions_json" | jq --argjson limit "$limit" --arg cutoff "$cutoff_date" '
-    [.[] | select(.start_time >= $cutoff)] | sort_by(.start_time) | reverse | .[:$limit]
+    [.[] | select(.start_time >= $cutoff)] | sort_by(.start_time) | reverse | if $limit > 0 then .[:$limit] else . end
   '
 }
 
@@ -226,14 +226,19 @@ collect_claude_code() {
 
 collect_opencode() {
   local session_dir="${1:-${HOME}/.local/share/opencode/storage}"
-  local limit="${2:-50}"
+  local limit="${2:-0}"
   local days="${3:-30}"
   local session_base="${session_dir}/session"
   local message_base="${session_dir}/message"
   local cutoff_date
   cutoff_date=$(calculate_cutoff_date "$days")
 
-  local process_limit=$((limit * 3))
+  local process_limit
+  if [[ "$limit" -gt 0 ]]; then
+    process_limit=$((limit * 3))
+  else
+    process_limit=9999
+  fi
   local session_files=()
   # Cross-platform stat: try BSD (macOS) first, then GNU (Linux)
   local stat_output
@@ -312,12 +317,14 @@ collect_opencode() {
     echo "$session_obj" >> "$tmpfile"
 
     collected=$((collected + 1))
-    [[ "$collected" -ge "$limit" ]] && break
+    [[ "$limit" -gt 0 && "$collected" -ge "$limit" ]] && break
   done
 
   echo "]" >> "$tmpfile"
 
-  jq --arg cutoff "$cutoff_date" '[.[] | select(.start_time >= $cutoff)] | sort_by(.start_time) | reverse' "$tmpfile"
+  jq --argjson limit "$limit" --arg cutoff "$cutoff_date" '
+    [.[] | select(.start_time >= $cutoff)] | sort_by(.start_time) | reverse | if $limit > 0 then .[:$limit] else . end
+  ' "$tmpfile"
   rm -f "$tmpfile"
 }
 
@@ -325,7 +332,7 @@ collect_opencode() {
 
 collect_codex() {
   local session_dir="${1:-${HOME}/.codex/sessions}"
-  local limit="${2:-50}"
+  local limit="${2:-0}"
   local days="${3:-30}"
   local sessions_json="[]"
   local cutoff_date
@@ -462,7 +469,7 @@ collect_codex() {
 
   # Sort by start_time descending and apply limit
   echo "$sessions_json" | jq --argjson limit "$limit" --arg cutoff "$cutoff_date" '
-    [.[] | select(.start_time >= $cutoff)] | sort_by(.start_time) | reverse | .[:$limit]
+    [.[] | select(.start_time >= $cutoff)] | sort_by(.start_time) | reverse | if $limit > 0 then .[:$limit] else . end
   '
 }
 
@@ -471,7 +478,7 @@ collect_codex() {
 main() {
   local cli_type=""
   local session_dir=""
-  local limit=50
+  local limit=0
   local days=30
 
   # Parse arguments

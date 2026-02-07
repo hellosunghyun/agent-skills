@@ -236,7 +236,7 @@ To add support for a new CLI:
    ```bash
    collect_new_cli() {
      local session_dir="${1:-$HOME/.newcli/sessions}"
-     local limit="${2:-50}"
+      local limit="${2:-0}"
      
      # Read session files
      # Extract metadata
