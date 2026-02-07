@@ -20,9 +20,10 @@ Outputs a JSON array of session objects sorted by start_time descending.
 
 OPTIONS:
   --cli <type>          CLI type: claude-code, opencode, codex
-                        (auto-detects if not specified)
+                         (auto-detects if not specified)
   --session-dir <path>  Override default session directory
   --limit <N>           Maximum sessions to return (default: 50)
+  --days <N>            Only include sessions from the last N days (default: 30)
   -h, --help            Show this help message
 
 EXAMPLES:
@@ -39,6 +40,33 @@ die() {
 
 require_jq() {
   command -v jq >/dev/null 2>&1 || die "jq is required but not installed. Run: brew install jq"
+}
+
+calculate_cutoff_date() {
+  local days="${1:-30}"
+  local cutoff=""
+
+  if date -v -1d +"%Y-%m-%dT%H:%M:%SZ" &>/dev/null 2>&1; then
+    cutoff=$(date -u -v -${days}d +"%Y-%m-%dT%H:%M:%SZ" 2>/dev/null || true)
+  fi
+
+  if [[ -z "$cutoff" ]]; then
+    if date -u -d "1 day ago" +"%Y-%m-%dT%H:%M:%SZ" &>/dev/null 2>&1; then
+      cutoff=$(date -u -d "${days} days ago" +"%Y-%m-%dT%H:%M:%SZ" 2>/dev/null || true)
+    fi
+  fi
+
+  if [[ -z "$cutoff" ]]; then
+    cutoff=$(python3 - <<PY
+from datetime import datetime, timedelta, timezone
+days = int("${days}")
+cutoff = datetime.now(timezone.utc) - timedelta(days=days)
+print(cutoff.strftime("%Y-%m-%dT%H:%M:%SZ"))
+PY
+)
+  fi
+
+  echo "$cutoff"
 }
 
 # Convert ISO-8601 timestamp to epoch seconds (portable)
@@ -71,7 +99,10 @@ epoch_ms_to_iso() {
 collect_claude_code() {
   local session_dir="${1:-${HOME}/.claude/projects}"
   local limit="${2:-50}"
+  local days="${3:-30}"
   local sessions_json="[]"
+  local cutoff_date
+  cutoff_date=$(calculate_cutoff_date "$days")
 
   # Find all .jsonl session files, excluding agent-* directories
   local files=()
@@ -186,8 +217,8 @@ collect_claude_code() {
   done
 
   # Sort by start_time descending and apply limit
-  echo "$sessions_json" | jq --argjson limit "$limit" '
-    sort_by(.start_time) | reverse | .[:$limit]
+  echo "$sessions_json" | jq --argjson limit "$limit" --arg cutoff "$cutoff_date" '
+    [.[] | select(.start_time >= $cutoff)] | sort_by(.start_time) | reverse | .[:$limit]
   '
 }
 
@@ -196,15 +227,25 @@ collect_claude_code() {
 collect_opencode() {
   local session_dir="${1:-${HOME}/.local/share/opencode/storage}"
   local limit="${2:-50}"
+  local days="${3:-30}"
   local session_base="${session_dir}/session"
   local message_base="${session_dir}/message"
+  local cutoff_date
+  cutoff_date=$(calculate_cutoff_date "$days")
 
   local process_limit=$((limit * 3))
   local session_files=()
+  # Cross-platform stat: try BSD (macOS) first, then GNU (Linux)
+  local stat_output
+  if stat -f '%m %N' /dev/null &>/dev/null 2>&1; then
+    stat_output=$(find "$session_base" -name '*.json' -type f -exec stat -f '%m %N' {} + 2>/dev/null)
+  else
+    stat_output=$(find "$session_base" -name '*.json' -type f -exec stat -c '%Y %n' {} + 2>/dev/null)
+  fi
+
   while IFS= read -r f; do
     [[ -n "$f" ]] && session_files+=("$f")
-  done < <(find "$session_base" -name '*.json' -type f -exec stat -f '%m %N' {} + 2>/dev/null | \
-    sort -rn | head -n "$process_limit" | sed 's/^[^ ]* //')
+  done < <(echo "$stat_output" | sort -rn | head -n "$process_limit" | sed 's/^[^ ]* //')
 
   if [[ ${#session_files[@]} -eq 0 ]]; then
     echo "[]"
@@ -276,7 +317,7 @@ collect_opencode() {
 
   echo "]" >> "$tmpfile"
 
-  jq 'sort_by(.start_time) | reverse' "$tmpfile"
+  jq --arg cutoff "$cutoff_date" '[.[] | select(.start_time >= $cutoff)] | sort_by(.start_time) | reverse' "$tmpfile"
   rm -f "$tmpfile"
 }
 
@@ -285,7 +326,10 @@ collect_opencode() {
 collect_codex() {
   local session_dir="${1:-${HOME}/.codex/sessions}"
   local limit="${2:-50}"
+  local days="${3:-30}"
   local sessions_json="[]"
+  local cutoff_date
+  cutoff_date=$(calculate_cutoff_date "$days")
 
   # Find all .jsonl rollout files
   local files=()
@@ -417,8 +461,8 @@ collect_codex() {
   done
 
   # Sort by start_time descending and apply limit
-  echo "$sessions_json" | jq --argjson limit "$limit" '
-    sort_by(.start_time) | reverse | .[:$limit]
+  echo "$sessions_json" | jq --argjson limit "$limit" --arg cutoff "$cutoff_date" '
+    [.[] | select(.start_time >= $cutoff)] | sort_by(.start_time) | reverse | .[:$limit]
   '
 }
 
@@ -428,6 +472,7 @@ main() {
   local cli_type=""
   local session_dir=""
   local limit=50
+  local days=30
 
   # Parse arguments
   while [[ $# -gt 0 ]]; do
@@ -445,6 +490,11 @@ main() {
       --limit)
         [[ $# -lt 2 ]] && die "--limit requires a value"
         limit="$2"
+        shift 2
+        ;;
+      --days)
+        [[ $# -lt 2 ]] && die "--days requires a value"
+        days="$2"
         shift 2
         ;;
       -h|--help)
@@ -468,15 +518,15 @@ main() {
   case "$cli_type" in
     claude-code)
       local dir="${session_dir:-${HOME}/.claude/projects}"
-      collect_claude_code "$dir" "$limit"
+      collect_claude_code "$dir" "$limit" "$days"
       ;;
     opencode)
       local dir="${session_dir:-${HOME}/.local/share/opencode/storage}"
-      collect_opencode "$dir" "$limit"
+      collect_opencode "$dir" "$limit" "$days"
       ;;
     codex)
       local dir="${session_dir:-${HOME}/.codex/sessions}"
-      collect_codex "$dir" "$limit"
+      collect_codex "$dir" "$limit" "$days"
       ;;
     *)
       die "Unsupported CLI type: $cli_type (supported: claude-code, opencode, codex)"

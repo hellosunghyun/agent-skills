@@ -189,15 +189,51 @@
             border-color: var(--accent-color);
         }
 
-        /* Helpers */
+        .kpi-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: 0.75rem; margin-bottom: 2rem; }
+        .kpi-card { background: var(--card-bg); border: 1px solid var(--border-color); border-radius: 0.5rem; padding: 1rem 0.75rem; text-align: center; }
+        .kpi-value { font-size: 1.5rem; font-weight: 700; color: var(--accent-color); line-height: 1.2; font-variant-numeric: tabular-nums; }
+        .kpi-label { font-size: 0.675rem; color: var(--text-secondary); text-transform: uppercase; font-weight: 600; letter-spacing: 0.05em; margin-top: 0.25rem; }
+
+        .v-bar-chart { display: flex; align-items: flex-end; gap: 2px; height: 140px; }
+        .v-bar { flex: 1; background: var(--accent-color); opacity: 0.6; border-radius: 2px 2px 0 0; min-width: 3px; transition: opacity 0.15s; cursor: default; }
+        .v-bar:hover { opacity: 1; }
+        .v-bar.peak { opacity: 1; background: var(--success-color); }
+        .chart-labels { display: flex; justify-content: space-between; font-size: 0.7rem; color: var(--text-secondary); padding-top: 0.375rem; }
+
+        .h-bar-chart { display: flex; flex-direction: column; gap: 0.5rem; }
+        .h-bar-row { display: flex; align-items: center; gap: 0.75rem; }
+        .h-bar-label { min-width: 100px; font-size: 0.8rem; text-align: right; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color: var(--text-secondary); }
+        .h-bar-track { flex: 1; height: 22px; background: var(--bg-color); border-radius: 3px; overflow: hidden; }
+        .h-bar-fill { height: 100%; background: var(--accent-color); border-radius: 3px; min-width: 2px; }
+        .h-bar-count { min-width: 2.5rem; text-align: right; font-size: 0.8rem; font-weight: 600; font-variant-numeric: tabular-nums; }
+
+        .data-table { width: 100%; border-collapse: collapse; font-size: 0.875rem; }
+        .data-table th { text-align: left; padding: 0.5rem 0.75rem; border-bottom: 2px solid var(--border-color); font-weight: 600; font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.04em; color: var(--text-secondary); }
+        .data-table th.r { text-align: right; }
+        .data-table td { padding: 0.5rem 0.75rem; border-bottom: 1px solid var(--border-color); }
+        .data-table td.r { text-align: right; font-variant-numeric: tabular-nums; }
+        .data-table tr:last-child td { border-bottom: none; }
+
+        .metrics-grid { display: flex; gap: 1rem; flex-wrap: wrap; margin-bottom: 1.5rem; }
+        .metrics-card { flex: 1; min-width: 280px; background: var(--card-bg); border: 1px solid var(--border-color); border-radius: var(--radius); padding: 1.25rem; }
+        .metrics-card h3 { margin: 0 0 0.75rem; font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.04em; color: var(--text-secondary); }
+        .metrics-row { display: flex; gap: 1.5rem; flex-wrap: wrap; }
+        .metric-value { font-size: 1.125rem; font-weight: 700; font-variant-numeric: tabular-nums; }
+        .metric-label { font-size: 0.675rem; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 0.03em; }
+
+        .section-divider { margin: 3rem 0 0.5rem; padding-top: 1.5rem; border-top: 2px solid var(--border-color); text-align: center; }
+        .section-divider-label { font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.1em; color: var(--text-secondary); font-weight: 600; }
+
         .hidden { display: none; }
         strong { font-weight: 600; color: var(--text-primary); }
 
-        /* Print Styles */
         @media print {
             body { background: white; color: black; padding: 0; }
             .container { max-width: 100%; }
-            .card { box-shadow: none; border: 1px solid #ddd; break-inside: avoid; }
+            .card, .kpi-card, .metrics-card { box-shadow: none; border: 1px solid #ddd; break-inside: avoid; }
+            .kpi-grid { grid-template-columns: repeat(3, 1fr); }
+            .v-bar-chart { height: 80px; }
+            .v-bar, .h-bar-fill { background: #333; opacity: 1; }
             h2 { border-bottom: 2px solid #000; }
             .fun-moment { background: none; border: 1px solid #000; }
         }
@@ -208,14 +244,15 @@
         <header>
             <h1>Insights Report</h1>
             <div class="report-meta">
-                Generated on <span id="gen-date">{{GENERATED_DATE}}</span> • {{CLI_TYPE}}
+                Generated on <span id="gen-date">{{GENERATED_DATE}}</span> &middot; {{CLI_TYPE}}
             </div>
-            <div id="stats-summary" style="margin-top: 1.5rem; font-size: 0.9rem; color: var(--text-secondary);"></div>
         </header>
-        
-        <main id="report-content">
-            <!-- Content will be injected via JS -->
-            <div id="loading" style="text-align: center; padding: 2rem;">Loading report...</div>
+
+        <main>
+            <div id="dashboard-content"></div>
+            <div id="report-content">
+                <div id="loading" style="text-align: center; padding: 2rem;">Loading report...</div>
+            </div>
         </main>
 
         <footer style="text-align: center; margin-top: 4rem; color: var(--text-secondary); font-size: 0.875rem;">
@@ -239,7 +276,22 @@
                 .replace(/'/g, "&#039;");
         };
 
-        // i18n translation function
+        const formatNumber = (n) => n != null ? Number(n).toLocaleString() : '0';
+        const formatTokens = (n) => {
+            if (!n) return '0';
+            if (n >= 1e9) return (n / 1e9).toFixed(1) + 'B';
+            if (n >= 1e6) return (n / 1e6).toFixed(1) + 'M';
+            if (n >= 1e3) return (n / 1e3).toFixed(1) + 'K';
+            return String(n);
+        };
+        const formatDuration = (minutes) => {
+            if (!minutes) return '0m';
+            const h = Math.floor(minutes / 60);
+            const m = Math.round(minutes % 60);
+            if (h === 0) return m + 'm';
+            if (m === 0) return h + 'h';
+            return h + 'h ' + m + 'm';
+        };
         let locale = {};
         try {
             const localeEl = document.getElementById('locale-data');
@@ -279,21 +331,122 @@
             `;
         };
 
-        // --- Renderers ---
+        // --- Dashboard ---
 
-        function renderStats(stats) {
-            if (!stats) return;
-            const summary = [];
-            if (stats.total_sessions) summary.push(`<strong>${stats.total_sessions}</strong> ${t('sessions', 'Sessions')}`);
-            if (stats.total_messages) summary.push(`<strong>${stats.total_messages}</strong> ${t('messages', 'Messages')}`);
-            if (stats.total_duration_minutes) {
-                const hours = Math.round(stats.total_duration_minutes / 60);
-                summary.push(`<strong>${hours}</strong> ${t('hours', 'Hours')}`);
+        function renderDashboard(stats) {
+            if (!stats || !stats.total_sessions) return '';
+            let html = '';
+
+            const kpis = [
+                { value: formatNumber(stats.total_sessions), label: t('sessions', 'Sessions') },
+                { value: formatNumber(stats.total_messages), label: t('messages', 'Messages') },
+                { value: String(stats.days_active || 0), label: t('kpi_active_days', 'Active Days') },
+                { value: String(stats.total_duration_hours || 0) + 'h', label: t('hours', 'Hours') },
+                { value: String(stats.avg_messages_per_session || 0), label: t('kpi_avg_per_session', 'Avg / Session') },
+                { value: String(stats.messages_per_day || 0), label: t('kpi_avg_per_day', 'Avg / Day') }
+            ];
+            html += '<div class="kpi-grid">' + kpis.map(k =>
+                `<div class="kpi-card"><div class="kpi-value">${k.value}</div><div class="kpi-label">${k.label}</div></div>`
+            ).join('') + '</div>';
+
+            if (stats.message_hours && stats.message_hours.some(v => v > 0)) {
+                const max = Math.max(...stats.message_hours);
+                const bars = stats.message_hours.map((v, i) => {
+                    const pct = max > 0 ? (v / max * 100) : 0;
+                    const cls = i === stats.peak_hour ? ' peak' : '';
+                    return `<div class="v-bar${cls}" style="height:${Math.max(pct, 1)}%" title="${i}:00 &#8212; ${formatNumber(v)} ${t('messages', 'messages')}"></div>`;
+                }).join('');
+                const labels = [0,3,6,9,12,15,18,21].map(h => `<span>${h}:00</span>`).join('');
+                html += renderSection(t('section_activity_heatmap', 'Activity by Hour'),
+                    `<div class="v-bar-chart">${bars}</div><div class="chart-labels">${labels}</div>`);
             }
-            if (stats.date_range) summary.push(`${stats.date_range.start} ${t('date_separator', 'to')} ${stats.date_range.end}`);
-            
-            $('stats-summary').innerHTML = summary.join(' &nbsp;|&nbsp; ');
+
+            if (stats.daily_activity && stats.daily_activity.length > 1) {
+                const maxMsg = Math.max(...stats.daily_activity.map(d => d.messages));
+                const step = Math.max(1, Math.ceil(stats.daily_activity.length / 10));
+                const bars = stats.daily_activity.map(d => {
+                    const pct = maxMsg > 0 ? (d.messages / maxMsg * 100) : 0;
+                    return `<div class="v-bar" style="height:${Math.max(pct, 1)}%" title="${d.date}: ${formatNumber(d.messages)} msgs, ${d.sessions} sessions"></div>`;
+                }).join('');
+                const labels = stats.daily_activity
+                    .filter((_, i) => i % step === 0)
+                    .map(d => `<span>${d.date.slice(5)}</span>`).join('');
+                html += renderSection(t('section_daily_trend', 'Daily Activity'),
+                    `<div class="v-bar-chart">${bars}</div><div class="chart-labels">${labels}</div>`);
+            }
+
+            if (stats.project_breakdown && Object.keys(stats.project_breakdown).length > 0) {
+                const projects = Object.entries(stats.project_breakdown)
+                    .map(([path, d]) => ({ name: path.split('/').pop() || path, ...d }))
+                    .sort((a, b) => b.sessions - a.sessions);
+                const rows = projects.map(p =>
+                    `<tr><td><strong>${escapeHtml(p.name)}</strong></td><td class="r">${p.sessions}</td><td class="r">${formatNumber(p.messages)}</td><td class="r">${formatDuration(p.duration_minutes)}</td><td class="r">${formatTokens((p.input_tokens||0) + (p.output_tokens||0))}</td></tr>`
+                ).join('');
+                html += renderSection(t('section_project_breakdown', 'Project Breakdown'),
+                    `<div style="overflow-x:auto"><table class="data-table">
+                        <thead><tr>
+                            <th>${t('col_project', 'Project')}</th>
+                            <th class="r">${t('sessions', 'Sessions')}</th>
+                            <th class="r">${t('messages', 'Messages')}</th>
+                            <th class="r">${t('col_duration', 'Duration')}</th>
+                            <th class="r">${t('col_tokens', 'Tokens')}</th>
+                        </tr></thead>
+                        <tbody>${rows}</tbody>
+                    </table></div>`);
+            }
+
+            if (stats.model_distribution && Object.keys(stats.model_distribution).length > 0) {
+                const models = Object.entries(stats.model_distribution).sort((a, b) => b[1] - a[1]);
+                const maxC = models[0][1];
+                const bars = models.map(([name, count]) => {
+                    const pct = maxC > 0 ? (count / maxC * 100) : 0;
+                    return `<div class="h-bar-row"><div class="h-bar-label">${escapeHtml(name)}</div><div class="h-bar-track"><div class="h-bar-fill" style="width:${pct}%"></div></div><span class="h-bar-count">${count}</span></div>`;
+                }).join('');
+                html += renderSection(t('section_model_distribution', 'Model Usage'),
+                    `<div class="h-bar-chart">${bars}</div>`);
+            }
+
+            let metricsHtml = '';
+            if (stats.duration_percentiles) {
+                const dp = stats.duration_percentiles;
+                metricsHtml += `<div class="metrics-card">
+                    <h3>${t('section_duration_stats', 'Session Duration')}</h3>
+                    <div class="metrics-row">
+                        <div><div class="metric-value">${formatDuration(dp.p50)}</div><div class="metric-label">Median</div></div>
+                        <div><div class="metric-value">${formatDuration(dp.p75)}</div><div class="metric-label">p75</div></div>
+                        <div><div class="metric-value">${formatDuration(dp.p90)}</div><div class="metric-label">p90</div></div>
+                        <div><div class="metric-value">${formatDuration(dp.min)}&#8211;${formatDuration(dp.max)}</div><div class="metric-label">${t('range', 'Range')}</div></div>
+                    </div>
+                </div>`;
+            }
+            if (stats.total_input_tokens || stats.total_output_tokens) {
+                metricsHtml += `<div class="metrics-card">
+                    <h3>${t('section_token_stats', 'Token Usage')}</h3>
+                    <div class="metrics-row">
+                        <div><div class="metric-value">${formatTokens(stats.total_input_tokens)}</div><div class="metric-label">${t('input_tokens', 'Input')}</div></div>
+                        <div><div class="metric-value">${formatTokens(stats.total_output_tokens)}</div><div class="metric-label">${t('output_tokens', 'Output')}</div></div>
+                        <div><div class="metric-value">${stats.token_efficiency || 0}x</div><div class="metric-label">${t('efficiency', 'Out/In Ratio')}</div></div>
+                        <div><div class="metric-value">${formatNumber(stats.total_user_messages)} / ${formatNumber(stats.total_assistant_messages)}</div><div class="metric-label">${t('user_vs_assistant', 'User / Assistant')}</div></div>
+                    </div>
+                </div>`;
+            }
+            if (metricsHtml) html += `<div class="metrics-grid">${metricsHtml}</div>`;
+
+            if (stats.tool_counts && Object.keys(stats.tool_counts).length > 0) {
+                const tools = Object.entries(stats.tool_counts).sort((a, b) => b[1] - a[1]).slice(0, 10);
+                const maxC = tools[0][1];
+                const bars = tools.map(([name, count]) => {
+                    const pct = maxC > 0 ? (count / maxC * 100) : 0;
+                    return `<div class="h-bar-row"><div class="h-bar-label" style="font-family:ui-monospace,monospace">${escapeHtml(name)}</div><div class="h-bar-track"><div class="h-bar-fill" style="width:${pct}%"></div></div><span class="h-bar-count">${count}</span></div>`;
+                }).join('');
+                html += renderSection(t('section_top_tools', 'Most Used Tools'),
+                    `<div class="h-bar-chart">${bars}</div>`);
+            }
+
+            return html;
         }
+
+        // --- AI Insight Renderers ---
 
         function renderAtAGlance(data) {
             if (!data) return '';
@@ -340,11 +493,13 @@
         }
 
         function renderWhatWorks(data) {
-            if (!data || !data.workflows || data.workflows.length === 0) return '';
+            if (!data) return '';
+            const workflows = data.impressive_workflows || data.workflows || [];
+            if (workflows.length === 0) return '';
             
-            const list = data.workflows.map(wf => `
+            const list = workflows.map(wf => `
                 <div style="margin-bottom: 1rem;">
-                    <div style="font-weight: 600; color: var(--success-color); margin-bottom: 0.25rem;">✓ ${escapeHtml(wf.title)}</div>
+                    <div style="font-weight: 600; color: var(--success-color); margin-bottom: 0.25rem;">&#10003; ${escapeHtml(wf.title)}</div>
                     <p class="text-secondary">${parseMarkdown(wf.description)}</p>
                 </div>
             `).join('');
@@ -415,7 +570,7 @@
                 <section style="margin-top: 3rem;">
                     <div class="card fun-moment">
                         <div style="text-align: center;">
-                            <div style="font-size: 2rem; margin-bottom: 0.5rem;">✨</div>
+                            <div style="font-size: 2rem; margin-bottom: 0.5rem;">&#10024;</div>
                             <h3 style="margin: 0; color: var(--accent-color);">${escapeHtml(data.headline || t('moment_of_zen', 'Moment of Zen'))}</h3>
                             <p style="margin-top: 0.5rem;">${parseMarkdown(data.detail)}</p>
                         </div>
@@ -428,19 +583,16 @@
         
         document.addEventListener('DOMContentLoaded', () => {
             try {
-                // Update UI with localized text
                 document.querySelector('h1').textContent = t('title', 'Insights Report');
                 document.title = t('title', 'Insights Report');
                 const footerP = document.querySelector('footer p');
                 if (footerP) footerP.textContent = t('footer', 'Generated by Insights');
 
-                // Get Raw Data
                 const statsRaw = $('stats-data').textContent.trim();
                 const insightsRaw = $('insights-data').textContent.trim();
 
                 let stats = {}, insights = {};
 
-                // Handle Placeholders if file is opened directly without processing
                 if (statsRaw && !statsRaw.includes('{{STATS_JSON')) {
                     stats = JSON.parse(statsRaw);
                 }
@@ -448,10 +600,9 @@
                     insights = JSON.parse(insightsRaw);
                 }
 
-                // Render
-                renderStats(stats);
-                
-                const htmlParts = [
+                $('dashboard-content').innerHTML = renderDashboard(stats);
+
+                const aiParts = [
                     renderAtAGlance(insights.at_a_glance),
                     renderProjectAreas(insights.project_areas),
                     renderStyle(insights.interaction_style),
@@ -462,7 +613,13 @@
                     renderFunMoment(insights.fun_ending)
                 ];
 
-                $('report-content').innerHTML = htmlParts.join('') || `<div style="text-align:center; color: var(--text-secondary);">${t('no_data', 'No insights data available to display.')}</div>`;
+                const aiHtml = aiParts.join('');
+                if (aiHtml) {
+                    $('report-content').innerHTML =
+                        `<div class="section-divider"><span class="section-divider-label">${t('section_ai_insights', 'AI Insights')}</span></div>` + aiHtml;
+                } else {
+                    $('report-content').innerHTML = '';
+                }
 
             } catch (e) {
                 console.error("Rendering failed", e);

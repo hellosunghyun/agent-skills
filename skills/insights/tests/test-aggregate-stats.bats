@@ -327,6 +327,232 @@ setup() {
   echo "$result" | jq empty
 }
 
+@test "aggregate-stats.sh: computes project_breakdown" {
+  input='[
+    {
+      "session_id": "test1",
+      "start_time": "2026-02-01T10:00:00.000Z",
+      "end_time": "2026-02-01T10:30:00.000Z",
+      "duration_minutes": 30,
+      "user_message_count": 5,
+      "assistant_message_count": 5,
+      "total_messages": 10,
+      "tools_used": ["bash"],
+      "project_path": "/Users/test/project1",
+      "git_branch": "main",
+      "input_tokens": 5000,
+      "output_tokens": 3000,
+      "model": "claude-sonnet-4"
+    },
+    {
+      "session_id": "test2",
+      "start_time": "2026-02-03T14:00:00.000Z",
+      "end_time": "2026-02-03T14:45:00.000Z",
+      "duration_minutes": 45,
+      "user_message_count": 8,
+      "assistant_message_count": 7,
+      "total_messages": 15,
+      "tools_used": ["bash"],
+      "project_path": "/Users/test/project1",
+      "git_branch": "main",
+      "input_tokens": 8000,
+      "output_tokens": 5000,
+      "model": "claude-opus-4"
+    }
+  ]'
+
+  result=$(echo "$input" | bash "$AGGREGATE_SCRIPT")
+
+  sessions=$(echo "$result" | jq -r '.project_breakdown["/Users/test/project1"].sessions')
+  [[ "$sessions" == "2" ]]
+
+  messages=$(echo "$result" | jq -r '.project_breakdown["/Users/test/project1"].messages')
+  [[ "$messages" == "25" ]]
+
+  duration=$(echo "$result" | jq -r '.project_breakdown["/Users/test/project1"].duration_minutes')
+  [[ "$duration" == "75" ]]
+}
+
+@test "aggregate-stats.sh: computes model_distribution" {
+  input='[
+    {
+      "session_id": "test1",
+      "start_time": "2026-02-06T10:00:00.000Z",
+      "end_time": "2026-02-06T10:15:00.000Z",
+      "duration_minutes": 15,
+      "user_message_count": 5,
+      "assistant_message_count": 5,
+      "total_messages": 10,
+      "tools_used": ["bash"],
+      "project_path": "/Users/test/project",
+      "git_branch": "main",
+      "input_tokens": 5000,
+      "output_tokens": 3000,
+      "model": "claude-sonnet-4"
+    },
+    {
+      "session_id": "test2",
+      "start_time": "2026-02-06T11:00:00.000Z",
+      "end_time": "2026-02-06T11:15:00.000Z",
+      "duration_minutes": 15,
+      "user_message_count": 3,
+      "assistant_message_count": 3,
+      "total_messages": 6,
+      "tools_used": ["bash"],
+      "project_path": "/Users/test/project",
+      "git_branch": "main",
+      "input_tokens": 3000,
+      "output_tokens": 2000,
+      "model": "claude-opus-4"
+    }
+  ]'
+
+  result=$(echo "$input" | bash "$AGGREGATE_SCRIPT")
+
+  sonnet=$(echo "$result" | jq -r '.model_distribution["claude-sonnet-4"]')
+  [[ "$sonnet" == "1" ]]
+
+  opus=$(echo "$result" | jq -r '.model_distribution["claude-opus-4"]')
+  [[ "$opus" == "1" ]]
+}
+
+@test "aggregate-stats.sh: computes duration_percentiles" {
+  input='[
+    {
+      "session_id": "test1",
+      "start_time": "2026-02-06T10:00:00.000Z",
+      "end_time": "2026-02-06T10:10:00.000Z",
+      "duration_minutes": 10,
+      "user_message_count": 5,
+      "assistant_message_count": 5,
+      "total_messages": 10,
+      "tools_used": ["bash"],
+      "project_path": "/Users/test/project",
+      "git_branch": "main",
+      "input_tokens": 5000,
+      "output_tokens": 3000,
+      "model": "claude-sonnet-4"
+    },
+    {
+      "session_id": "test2",
+      "start_time": "2026-02-06T11:00:00.000Z",
+      "end_time": "2026-02-06T11:30:00.000Z",
+      "duration_minutes": 30,
+      "user_message_count": 3,
+      "assistant_message_count": 3,
+      "total_messages": 6,
+      "tools_used": ["bash"],
+      "project_path": "/Users/test/project",
+      "git_branch": "main",
+      "input_tokens": 3000,
+      "output_tokens": 2000,
+      "model": "claude-sonnet-4"
+    }
+  ]'
+
+  result=$(echo "$input" | bash "$AGGREGATE_SCRIPT")
+
+  min_val=$(echo "$result" | jq -r '.duration_percentiles.min')
+  [[ "$min_val" == "10" ]]
+
+  max_val=$(echo "$result" | jq -r '.duration_percentiles.max')
+  [[ "$max_val" == "30" ]]
+
+  avg_val=$(echo "$result" | jq -r '.duration_percentiles.avg')
+  [[ "$avg_val" == "20" ]]
+}
+
+@test "aggregate-stats.sh: computes daily_activity" {
+  input='[
+    {
+      "session_id": "test1",
+      "start_time": "2026-02-01T10:00:00.000Z",
+      "end_time": "2026-02-01T10:30:00.000Z",
+      "duration_minutes": 30,
+      "user_message_count": 5,
+      "assistant_message_count": 5,
+      "total_messages": 10,
+      "tools_used": ["bash"],
+      "project_path": "/Users/test/project",
+      "git_branch": "main",
+      "input_tokens": 5000,
+      "output_tokens": 3000,
+      "model": "claude-sonnet-4"
+    },
+    {
+      "session_id": "test2",
+      "start_time": "2026-02-01T14:00:00.000Z",
+      "end_time": "2026-02-01T14:15:00.000Z",
+      "duration_minutes": 15,
+      "user_message_count": 3,
+      "assistant_message_count": 3,
+      "total_messages": 6,
+      "tools_used": ["bash"],
+      "project_path": "/Users/test/project",
+      "git_branch": "main",
+      "input_tokens": 3000,
+      "output_tokens": 2000,
+      "model": "claude-sonnet-4"
+    }
+  ]'
+
+  result=$(echo "$input" | bash "$AGGREGATE_SCRIPT")
+
+  daily_count=$(echo "$result" | jq -r '.daily_activity | length')
+  [[ "$daily_count" == "1" ]]
+
+  daily_sessions=$(echo "$result" | jq -r '.daily_activity[0].sessions')
+  [[ "$daily_sessions" == "2" ]]
+
+  daily_messages=$(echo "$result" | jq -r '.daily_activity[0].messages')
+  [[ "$daily_messages" == "16" ]]
+}
+
+@test "aggregate-stats.sh: computes token_efficiency and message ratios" {
+  input='[{
+    "session_id": "test1",
+    "start_time": "2026-02-06T10:00:00.000Z",
+    "end_time": "2026-02-06T10:15:00.000Z",
+    "duration_minutes": 15,
+    "user_message_count": 5,
+    "assistant_message_count": 10,
+    "total_messages": 15,
+    "tools_used": ["bash"],
+    "project_path": "/Users/test/project",
+    "git_branch": "main",
+    "input_tokens": 10000,
+    "output_tokens": 5000,
+    "model": "claude-sonnet-4"
+  }]'
+
+  result=$(echo "$input" | bash "$AGGREGATE_SCRIPT")
+
+  efficiency=$(echo "$result" | jq -r '.token_efficiency')
+  [[ "$efficiency" == "0.5" ]]
+
+  user_msgs=$(echo "$result" | jq -r '.total_user_messages')
+  [[ "$user_msgs" == "5" ]]
+
+  asst_msgs=$(echo "$result" | jq -r '.total_assistant_messages')
+  [[ "$asst_msgs" == "10" ]]
+
+  avg_per_session=$(echo "$result" | jq -r '.avg_messages_per_session')
+  [[ "$avg_per_session" == "15" ]]
+}
+
+@test "aggregate-stats.sh: empty array has new fields" {
+  result=$(echo '[]' | bash "$AGGREGATE_SCRIPT")
+
+  [[ "$(echo "$result" | jq -r '.project_breakdown | length')" == "0" ]]
+  [[ "$(echo "$result" | jq -r '.model_distribution | length')" == "0" ]]
+  [[ "$(echo "$result" | jq -r '.duration_percentiles.p50')" == "0" ]]
+  [[ "$(echo "$result" | jq -r '.daily_activity | length')" == "0" ]]
+  [[ "$(echo "$result" | jq -r '.token_efficiency')" == "0" ]]
+  [[ "$(echo "$result" | jq -r '.total_user_messages')" == "0" ]]
+  [[ "$(echo "$result" | jq -r '.total_assistant_messages')" == "0" ]]
+  [[ "$(echo "$result" | jq -r '.avg_messages_per_session')" == "0" ]]
+}
+
 @test "aggregate-stats.sh: handles null project_path" {
   input='[{
     "session_id": "test1",

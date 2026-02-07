@@ -84,7 +84,7 @@ teardown() {
 # --- OpenCode adapter tests ---
 
 @test "collects OpenCode sessions from fixture data" {
-  run bash "${SCRIPT}" --cli opencode --session-dir "${FIXTURES_DIR}/opencode"
+  run bash "${SCRIPT}" --cli opencode --session-dir "${FIXTURES_DIR}/opencode" --days 99999
 
   [ "$status" -eq 0 ]
   echo "$output" | jq empty
@@ -93,7 +93,7 @@ teardown() {
 }
 
 @test "OpenCode: extracts correct metadata fields" {
-  run bash "${SCRIPT}" --cli opencode --session-dir "${FIXTURES_DIR}/opencode"
+  run bash "${SCRIPT}" --cli opencode --session-dir "${FIXTURES_DIR}/opencode" --days 99999
 
   [ "$status" -eq 0 ]
   local session
@@ -112,7 +112,7 @@ teardown() {
 }
 
 @test "OpenCode: filters sessions with <2 messages" {
-  run bash "${SCRIPT}" --cli opencode --session-dir "${FIXTURES_DIR}/opencode"
+  run bash "${SCRIPT}" --cli opencode --session-dir "${FIXTURES_DIR}/opencode" --days 99999
 
   [ "$status" -eq 0 ]
   # session-oc-short has only 1 message → should be filtered
@@ -195,6 +195,22 @@ teardown() {
   local count
   count=$(echo "$output" | jq 'length')
   [ "$count" -le 1 ]
+}
+
+@test "--days flag filters sessions by date" {
+  # Use the OpenCode fixture which has known timestamps
+  local result
+  result=$(bash "$SCRIPT" --cli opencode --session-dir "$FIXTURES_DIR/opencode" --days 99999)
+  local count
+  count=$(echo "$result" | jq 'length')
+  [[ "$count" -gt 0 ]]
+
+  # With --days 0, should get no sessions
+  local result_none
+  result_none=$(bash "$SCRIPT" --cli opencode --session-dir "$FIXTURES_DIR/opencode" --days 0)
+  local count_none
+  count_none=$(echo "$result_none" | jq 'length')
+  [[ "$count_none" -eq 0 ]]
 }
 
 @test "output is sorted by start_time descending" {

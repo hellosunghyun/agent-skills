@@ -119,12 +119,13 @@ CLI_TYPE=$(./scripts/detect-cli.sh --cli claude-code)
 
 **Example:**
 ```bash
-SESSIONS_JSON=$(./scripts/collect-sessions.sh --cli "$CLI_TYPE" --limit 50)
+SESSIONS_JSON=$(./scripts/collect-sessions.sh --cli "$CLI_TYPE" --limit 50 --days 30)
 echo "$SESSIONS_JSON" | jq 'length'  # Show session count
 ```
 
 **Options:**
 - `--limit N`: Limit to N most recent sessions (default: 50)
+- `--days N`: Only include sessions from the last N days (default: 30)
 - `--session-dir <path>`: Override default session directory
 
 ### Step 4: Aggregate Statistics
@@ -404,7 +405,7 @@ cd skills/insights
 CLI_TYPE=$(./scripts/detect-cli.sh)
 
 # 3. Collect sessions
-SESSIONS=$(./scripts/collect-sessions.sh --cli "$CLI_TYPE" --limit 50)
+SESSIONS=$(./scripts/collect-sessions.sh --cli "$CLI_TYPE" --limit 50 --days 30)
 
 # 4. Aggregate stats
 STATS=$(echo "$SESSIONS" | ./scripts/aggregate-stats.sh)

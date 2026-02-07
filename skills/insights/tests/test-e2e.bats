@@ -67,6 +67,11 @@ run_full_pipeline() {
   local cli_type="$1"
   local fixture_dir="$2"
   local report_path="${TEST_TEMP_DIR}/e2e-${cli_type}.html"
+  local days_args=()
+
+  if [[ "$cli_type" == "opencode" ]]; then
+    days_args=(--days 99999)
+  fi
 
   # Step 1: Detect CLI
   run bash "${SCRIPTS_DIR}/detect-cli.sh" --cli "$cli_type"
@@ -75,7 +80,7 @@ run_full_pipeline() {
 
   # Step 2: Collect sessions
   local sessions
-  sessions=$(bash "${SCRIPTS_DIR}/collect-sessions.sh" --cli "$cli_type" --session-dir "$fixture_dir")
+  sessions=$(bash "${SCRIPTS_DIR}/collect-sessions.sh" --cli "$cli_type" --session-dir "$fixture_dir" "${days_args[@]}")
   # Verify valid JSON array with at least 1 session
   echo "$sessions" | jq empty
   local session_count
